@@ -11,7 +11,11 @@ file_path_daily = os.path.join(os.path.dirname(__file__), '..', 'daily.csv')
 file_path_user = os.path.join(os.path.dirname(__file__), '..', 'user.csv')
 
 # CSV 파일 로드
-df = pd.read_csv(file_path_main)
+# df = pd.read_csv(file_path_main)
+file_parts = ['main_part1.csv','main_part2.csv','main_part3.csv','main_part4.csv','main_part5.csv','main_part6.csv','main_part7.csv','main_part8.csv','main_part9.csv']
+df_list = [pd.read_csv(os.path.join(os.path.dirname(__file__), '../main_csv', file)) for file in file_parts]
+df = pd.concat(df_list, ignore_index=True)
+
 day_df = pd.read_csv(file_path_daily)
 day_df['event_date'] = pd.to_datetime(day_df['event_date'], errors='coerce')
 user_df = pd.read_csv(file_path_user)
