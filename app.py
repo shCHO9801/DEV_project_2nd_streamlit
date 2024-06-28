@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import os
 import io
+import toml
+import json
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
@@ -13,9 +15,17 @@ SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
 # 환경 변수에서 client_secret.json 내용 가져오기
 client_secret_json_str = os.getenv('CLIENT_SECRET_JSON')
 
+# 환경 변수가 올바르게 설정되지 않은 경우 에러 메시지 출력
+if client_secret_json_str is None:
+    st.error("환경 변수 'CLIENT_SECRET_JSON'이 설정되지 않았습니다.")
+    st.stop()
+
+# TOML 형식의 환경 변수를 JSON 형식으로 변환
+client_secret_json = toml.loads(client_secret_json_str)
+
 # client_secret.json 파일 생성
 with open('client_secret.json', 'w') as f:
-    f.write(client_secret_json_str)
+    json.dump(client_secret_json, f)
 
 # OAuth 2.0 인증
 def authenticate_gdrive():
@@ -35,6 +45,16 @@ def authenticate_gdrive():
             token.write(creds.to_json())
     return creds
 
+# Google Drive에서 파일 목록 가져오기
+def list_files_in_folder(folder_id):
+    creds = authenticate_gdrive()
+    service = build('drive', 'v3', credentials=creds)
+    results = service.files().list(q=f"'{folder_id}' in parents",
+                                   pageSize=1000,
+                                   fields="files(id, name)").execute()
+    items = results.get('files', [])
+    return items
+
 # Google Drive에서 파일 다운로드
 def download_file_from_gdrive(file_id):
     creds = authenticate_gdrive()
@@ -47,16 +67,6 @@ def download_file_from_gdrive(file_id):
         status, done = downloader.next_chunk()
     fh.seek(0)
     return fh
-# Google Drive에서 파일 목록 가져오기
-def list_files_in_folder(folder_id):
-    creds = authenticate_gdrive()
-    service = build('drive', 'v3', credentials=creds)
-    results = service.files().list(q=f"'{folder_id}' in parents",
-                                   pageSize=1000,
-                                   fields="files(id, name)").execute()
-    items = results.get('files', [])
-    return items
-
 
 # 폴더 ID 설정 (예: '1A2B3C4D5E6F')
 folder_id = '1ME74_jO5elNQyHrlIJj3i6xTUvIA0Umo'
@@ -80,32 +90,6 @@ for i, file_id in enumerate(selected_file_ids):
     downloaded_file = download_file_from_gdrive(file_id)
     df = pd.read_csv(downloaded_file)
     dataframes[f"df_{i+1}"] = df
-# # 파일 ID로 Google Drive에서 파일 다운로드
-# file_ids = {
-#     "daily": "your-daily-file-id",
-#     "main": "your-main-file-id",
-#     "user_new": "your-user-new-file-id",
-#     "user_csv": "your-user-csv-file-id"
-# }
-
-# # 파일을 다운로드하여 DataFrame으로 로드
-# daily_file = download_file_from_gdrive(file_ids["daily"])
-# main_file = download_file_from_gdrive(file_ids["main"])
-# user_new_file = download_file_from_gdrive(file_ids["user_new"])
-# user_csv_file = download_file_from_gdrive(file_ids["user_csv"])
-
-# daily_df = pd.read_csv(daily_file)
-# main_df = pd.read_csv(main_file)
-# user_new_df = pd.read_csv(user_new_file)
-# user_csv_df = pd.read_csv(user_csv_file)
-################################
-# # 현재 파일의 디렉토리 경로를 기준으로 상대 경로를 지정
-# file_path = os.path.join(os.path.dirname(__file__), 'user_new.csv')
-# file_path2 = os.path.join(os.path.dirname(__file__), 'daily.csv')
-
-# # CSV 파일 로드
-# user_df = pd.read_csv(file_path)
-# daily_df = pd.read_csv(file_path2)
 
 # Streamlit 앱 설정
 st.title("AARRR 프레임워크 대시보드")
@@ -124,6 +108,17 @@ st.write("""
     - **재방문(Retention)**: 사용자 유지 관련 지표를 확인합니다.
     - **수익(Revenue)**: 사용자 수익 관련 지표를 확인합니다.
     """)
+
+# 데이터 미리보기
+for i, df in dataframes.items():
+    st.write(f"### 데이터 미리보기 {i}")
+    st.dataframe(df.head())
+
+# 데이터 통계
+for i, df in dataframes.items():
+    st.write(f"### 기본 통계 {i}")
+    st.write(df.describe())
+
 
 # 공통 지표 계산 함수
 def calculate_aquisition_metrics(df):
