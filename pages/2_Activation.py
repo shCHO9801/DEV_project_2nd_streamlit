@@ -11,7 +11,7 @@ file_path_daily = os.path.join(os.path.dirname(__file__), '..', 'daily.csv')
 
 # csv 병합
 file_parts = ['main_part1.csv','main_part2.csv','main_part3.csv','main_part4.csv','main_part5.csv','main_part6.csv','main_part7.csv','main_part8.csv','main_part9.csv']
-df_list = [pd.read_csv(os.path.join(os.path.dirname(__file__), '..', file)) for file in file_parts]
+df_list = [pd.read_csv(os.path.join(os.path.dirname(__file__), '../main_csv', file)) for file in file_parts]
 df = pd.concat(df_list, ignore_index=True)
 
 # CSV 파일 로드
