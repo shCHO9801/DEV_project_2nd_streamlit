@@ -119,7 +119,6 @@ for i, df in dataframes.items():
     st.write(f"### 기본 통계 {i}")
     st.write(df.describe())
 
-
 # 공통 지표 계산 함수
 def calculate_aquisition_metrics(df):
     total_users = df['user_id'].nunique()
