@@ -3,50 +3,53 @@ import pandas as pd
 import os
 import io
 import json
+import requests
 from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
+from google.auth.transport.requests import Request
 
 # Google Drive API를 사용할 범위 설정
 SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
 
-# 환경 변수에서 client_secret.json 내용 가져오기
-client_secret_json_str = st.secrets["CLIENT_SECRET_JSON"]
+# 환경 변수에서 OAuth 클라이언트 정보 가져오기
+oauth_secrets = st.secrets["oauth"]
+client_id = oauth_secrets["client_id"]
+client_secret = oauth_secrets["client_secret"]
+redirect_uri = oauth_secrets["redirect_uri"]
 
-# client_secret.json 파일 생성
-client_secret_json = {
-    "installed": {
-        "client_id": client_secret_json_str["client_id"],
-        "project_id": client_secret_json_str["project_id"],
-        "auth_uri": client_secret_json_str["auth_uri"],
-        "token_uri": client_secret_json_str["token_uri"],
-        "auth_provider_x509_cert_url": client_secret_json_str["auth_provider_x509_cert_url"],
-        "client_secret": client_secret_json_str["client_secret"],
-        "redirect_uris": client_secret_json_str["redirect_uris"]
-    }
-}
-
-with open('client_secret.json', 'w') as f:
-    json.dump(client_secret_json, f)
-
-# OAuth 2.0 인증
+# 사용자 인증을 처리하는 함수
 def authenticate_gdrive():
-    creds = None
-    # token.json 파일이 있다면 기존 인증 정보를 로드
-    if os.path.exists('token.json'):
-        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
-    # 유효한 자격 증명이 없다면 새로 로그인
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file('client_secret.json', SCOPES)
-            creds = flow.run_console()
-        # 자격 증명을 token.json 파일에 저장
-        with open('token.json', 'w') as token:
-            token.write(creds.to_json())
-    return creds
+    if "credentials" not in st.session_state:
+        flow = Flow.from_client_config(
+            {
+                "web": {
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "redirect_uris": [redirect_uri],
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                }
+            },
+            scopes=SCOPES,
+        )
+        flow.redirect_uri = redirect_uri
+
+        auth_url, _ = flow.authorization_url(prompt="consent")
+
+        st.write(f"로그인을 위해 [여기]({auth_url})를 클릭하세요.")
+
+        auth_code = st.text_input("인증 코드 입력:")
+
+        if auth_code:
+            flow.fetch_token(code=auth_code)
+            credentials = flow.credentials
+            st.session_state.credentials = credentials
+            st.experimental_rerun()
+
+    credentials = st.session_state.credentials
+    return credentials
 
 # Google Drive에서 파일 목록 가져오기
 def list_files_in_folder(folder_id):
