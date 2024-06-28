@@ -1,14 +1,104 @@
 import streamlit as st
 import pandas as pd
 import os
+import io
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseDownload
 
-# 현재 파일의 디렉토리 경로를 기준으로 상대 경로를 지정
-file_path = os.path.join(os.path.dirname(__file__), 'user_new.csv')
-file_path2 = os.path.join(os.path.dirname(__file__), 'daily.csv')
+# Google Drive API를 사용할 범위 설정
+SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
 
-# CSV 파일 로드
-user_df = pd.read_csv(file_path)
-daily_df = pd.read_csv(file_path2)
+# OAuth 2.0 인증
+def authenticate_gdrive():
+    creds = None
+    # token.json 파일이 있다면 기존 인증 정보를 로드
+    if os.path.exists('token.json'):
+        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+    # 유효한 자격 증명이 없다면 새로 로그인
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file('client_secret.json', SCOPES)
+            creds = flow.run_local_server(port=0)
+        # 자격 증명을 token.json 파일에 저장
+        with open('token.json', 'w') as token:
+            token.write(creds.to_json())
+    return creds
+
+# Google Drive에서 파일 다운로드
+def download_file_from_gdrive(file_id):
+    creds = authenticate_gdrive()
+    service = build('drive', 'v3', credentials=creds)
+    request = service.files().get_media(fileId=file_id)
+    fh = io.BytesIO()
+    downloader = MediaIoBaseDownload(fh, request)
+    done = False
+    while not done:
+        status, done = downloader.next_chunk()
+    fh.seek(0)
+    return fh
+# Google Drive에서 파일 목록 가져오기
+def list_files_in_folder(folder_id):
+    creds = authenticate_gdrive()
+    service = build('drive', 'v3', credentials=creds)
+    results = service.files().list(q=f"'{folder_id}' in parents",
+                                   pageSize=1000,
+                                   fields="files(id, name)").execute()
+    items = results.get('files', [])
+    return items
+
+
+# 폴더 ID 설정 (예: '1A2B3C4D5E6F')
+folder_id = '1ME74_jO5elNQyHrlIJj3i6xTUvIA0Umo'
+
+# 폴더 내 파일 목록 가져오기
+files = list_files_in_folder(folder_id)
+
+# 파일 목록 출력 및 사용자 선택
+st.write("### Google Drive 폴더 내 파일 목록")
+file_options = {file['name']: file['id'] for file in files}
+
+# 여러 파일 선택을 위한 멀티 셀렉션 박스
+selected_files = st.multiselect("파일을 선택하세요 (최대 4개):", list(file_options.keys()))
+
+# 선택된 파일 ID 가져오기
+selected_file_ids = [file_options[file_name] for file_name in selected_files]
+
+# 선택된 파일을 다운로드하여 DataFrame으로 로드
+dataframes = {}
+for i, file_id in enumerate(selected_file_ids):
+    downloaded_file = download_file_from_gdrive(file_id)
+    df = pd.read_csv(downloaded_file)
+    dataframes[f"df_{i+1}"] = df
+# # 파일 ID로 Google Drive에서 파일 다운로드
+# file_ids = {
+#     "daily": "your-daily-file-id",
+#     "main": "your-main-file-id",
+#     "user_new": "your-user-new-file-id",
+#     "user_csv": "your-user-csv-file-id"
+# }
+
+# # 파일을 다운로드하여 DataFrame으로 로드
+# daily_file = download_file_from_gdrive(file_ids["daily"])
+# main_file = download_file_from_gdrive(file_ids["main"])
+# user_new_file = download_file_from_gdrive(file_ids["user_new"])
+# user_csv_file = download_file_from_gdrive(file_ids["user_csv"])
+
+# daily_df = pd.read_csv(daily_file)
+# main_df = pd.read_csv(main_file)
+# user_new_df = pd.read_csv(user_new_file)
+# user_csv_df = pd.read_csv(user_csv_file)
+################################
+# # 현재 파일의 디렉토리 경로를 기준으로 상대 경로를 지정
+# file_path = os.path.join(os.path.dirname(__file__), 'user_new.csv')
+# file_path2 = os.path.join(os.path.dirname(__file__), 'daily.csv')
+
+# # CSV 파일 로드
+# user_df = pd.read_csv(file_path)
+# daily_df = pd.read_csv(file_path2)
 
 # Streamlit 앱 설정
 st.title("AARRR 프레임워크 대시보드")
