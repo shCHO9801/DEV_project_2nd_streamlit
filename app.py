@@ -42,7 +42,7 @@ def authenticate_gdrive():
             creds.refresh(Request())
         else:
             flow = InstalledAppFlow.from_client_secrets_file('client_secret.json', SCOPES)
-            creds = flow.run_local_server(port=0)
+            creds = flow.run_console()
         # 자격 증명을 token.json 파일에 저장
         with open('token.json', 'w') as token:
             token.write(creds.to_json())
