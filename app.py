@@ -13,15 +13,10 @@ from googleapiclient.http import MediaIoBaseDownload
 SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
 
 # 환경 변수에서 client_secret.json 내용 가져오기
-client_secret_json_str = os.getenv('CLIENT_SECRET_JSON')
-
-# 환경 변수가 올바르게 설정되지 않은 경우 에러 메시지 출력
-if client_secret_json_str is None:
-    st.error("환경 변수 'CLIENT_SECRET_JSON'이 설정되지 않았습니다.")
-    st.stop()
+client_secret_json_str = st.secrets["CLIENT_SECRET_JSON"]
 
 # TOML 형식의 환경 변수를 JSON 형식으로 변환
-client_secret_json = toml.loads(client_secret_json_str)
+client_secret_json = toml.loads(toml.dumps({"installed": client_secret_json_str}))
 
 # client_secret.json 파일 생성
 with open('client_secret.json', 'w') as f:
