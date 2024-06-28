@@ -18,7 +18,7 @@ df = pd.concat(df_list, ignore_index=True)
 daily_df = pd.read_csv(file_path_daily)
 daily_df['event_date'] = pd.to_datetime(daily_df['event_date'])
 
-df = pd.read_csv(file_path_processed)
+# df = pd.read_csv(file_path_processed)
 
 # 지표 시각화 함수
 def plot_metric(df, metric):
