@@ -10,6 +10,13 @@ from googleapiclient.http import MediaIoBaseDownload
 # Google Drive API를 사용할 범위 설정
 SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
 
+# 환경 변수에서 client_secret.json 내용 가져오기
+client_secret_json_str = os.getenv('CLIENT_SECRET_JSON')
+
+# client_secret.json 파일 생성
+with open('client_secret.json', 'w') as f:
+    f.write(client_secret_json_str)
+
 # OAuth 2.0 인증
 def authenticate_gdrive():
     creds = None
