@@ -9,7 +9,7 @@
   - Streamlit을 활용한 대시보드 제작
     
 # Streamlit URL
-- https://devproject2-5hewec4suatz5wbo5ugv95.streamlit.app/
+- https://devproject2ndapp-cmt6w4xb7dafxmygejzwcj.streamlit.app/Acquisition
   
 # Role
 - 김상준: 활성화, 수익 지표 설계 / 유입 대시보드 제작
